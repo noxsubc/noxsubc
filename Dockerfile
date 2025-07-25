@@ -1,7 +1,7 @@
 # Usa Python 3.10.13
 FROM python:3.10.13-slim
 
-# Instala as dependências de sistema necessárias pro 'av'
+# Instala dependências do sistema
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         libavformat-dev \
@@ -14,18 +14,18 @@ RUN apt-get update && \
         gcc && \
     rm -rf /var/lib/apt/lists/*
 
-# Cria diretório de trabalho
+# Define diretório de trabalho
 WORKDIR /app
 
-# Copia arquivos do projeto
+# Copia tudo
 COPY . .
 
-# Atualiza pip e instala dependências
+# Instala dependências do Python
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# Expõe a porta que seu app usa
+# Expõe a porta que seu app vai rodar
 EXPOSE 8000
 
-# Comando para rodar o servidor (ajuste conforme sua app)
+# Comando para iniciar (ajuste se necessário)
 CMD ["gunicorn", "-b", "0.0.0.0:8000", "app:app"]
