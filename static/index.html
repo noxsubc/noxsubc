@@ -48,6 +48,14 @@
         input[type='text']:focus {
             border: 1.5px solid #e52d27;
         }
+        select {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+            outline: none;
+            margin-bottom: 8px;
+        }
         button {
             padding: 12px;
             border-radius: 8px;
@@ -90,25 +98,89 @@
         <h1>Baixar Vídeo do YouTube</h1>
         <div class="input-group">
             <input type="text" id="yturl" placeholder="Cole a URL do vídeo do YouTube aqui">
+            <select id="qualitySelect" style="display:none;"></select>
             <button onclick="downloadVideo()">Baixar</button>
         </div>
         <div class="message" id="message"></div>
     </div>
     <div class="footer">Desenvolvido por <b>noxsubc</b> &copy; 2024</div>
     <script>
+        function setCookie(name, value, days) {
+            const d = new Date();
+            d.setTime(d.getTime() + (days*24*60*60*1000));
+            let expires = "expires="+ d.toUTCString();
+            document.cookie = name + "=" + value + ";" + expires + ";path=/";
+        }
+        function getCookie(name) {
+            let cname = name + "=";
+            let decodedCookie = decodeURIComponent(document.cookie);
+            let ca = decodedCookie.split(';');
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1);
+                if (c.indexOf(cname) == 0) return c.substring(cname.length, c.length);
+            }
+            return "";
+        }
+
+        document.getElementById('yturl').addEventListener('blur', fetchQualities);
+        document.getElementById('yturl').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') fetchQualities();
+        });
+
+        function fetchQualities() {
+            const url = document.getElementById('yturl').value;
+            const select = document.getElementById('qualitySelect');
+            const messageDiv = document.getElementById('message');
+            select.style.display = 'none';
+            select.innerHTML = '';
+            if (!url) return;
+            messageDiv.textContent = 'Buscando qualidades...';
+            fetch('/api/qualities', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.qualities && data.qualities.length > 0) {
+                    select.style.display = '';
+                    data.qualities.forEach(q => {
+                        const opt = document.createElement('option');
+                        opt.value = q.itag;
+                        opt.textContent = q.resolution + ' (' + q.mime_type + ')';
+                        select.appendChild(opt);
+                    });
+                    // Seleciona a última qualidade usada (cookie)
+                    const lastItag = getCookie('lastItag');
+                    if (lastItag) select.value = lastItag;
+                    messageDiv.textContent = '';
+                } else {
+                    messageDiv.textContent = 'Nenhuma qualidade disponível.';
+                }
+            })
+            .catch(() => {
+                messageDiv.textContent = 'Erro ao buscar qualidades.';
+            });
+        }
+
         function downloadVideo() {
             const url = document.getElementById('yturl').value;
+            const select = document.getElementById('qualitySelect');
             const messageDiv = document.getElementById('message');
+            const itag = select && select.style.display !== 'none' ? select.value : undefined;
             messageDiv.textContent = '';
             if (!url) {
                 messageDiv.textContent = 'Por favor, insira a URL do vídeo.';
                 return;
             }
             messageDiv.textContent = 'Processando...';
+            // Salva a última qualidade escolhida
+            if (itag) setCookie('lastItag', itag, 30);
             fetch('/api/download', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url })
+                body: JSON.stringify(itag ? { url, itag } : { url })
             })
             .then(response => {
                 if (!response.ok) return response.json().then(err => { throw err; });

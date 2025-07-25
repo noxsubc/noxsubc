@@ -21,15 +21,43 @@ def not_found(e):
 def get_message():
     return {"message": "Hello from Python Backend!"}
 
-@app.route('/api/download', methods=['POST'])
-def download_video():
+@app.route('/api/qualities', methods=['POST'])
+def get_qualities():
     data = request.get_json()
     url = data.get('url')
     if not url:
         return jsonify({'error': 'URL is required'}), 400
     try:
         yt = YouTube(url)
-        stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
+        streams = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc()
+        qualities = []
+        for stream in streams:
+            qualities.append({
+                'itag': stream.itag,
+                'resolution': stream.resolution,
+                'mime_type': stream.mime_type
+            })
+        if not qualities:
+            return jsonify({'error': 'No available qualities.'}), 404
+        return jsonify({'qualities': qualities})
+    except Exception as e:
+        print('Erro ao obter qualidades:', str(e))
+        print(traceback.format_exc())
+        return jsonify({'error': f'Error: {str(e)}'}), 500
+
+@app.route('/api/download', methods=['POST'])
+def download_video():
+    data = request.get_json()
+    url = data.get('url')
+    itag = data.get('itag')
+    if not url:
+        return jsonify({'error': 'URL is required'}), 400
+    try:
+        yt = YouTube(url)
+        if itag:
+            stream = yt.streams.get_by_itag(itag)
+        else:
+            stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
         if not stream:
             return jsonify({'error': f'No suitable video stream found for {yt.title}.'}), 404
         filename = f"{uuid.uuid4()}.mp4"
