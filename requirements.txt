@@ -1,9 +1,9 @@
-﻿flask==2.3.3
+flask==2.3.3
 flask-cors==4.0.0
 gunicorn==21.2.0
 pytube==15.0.0
 faster-whisper==1.0.1
 ffmpeg-python==0.2.0
 requests==2.31.0
-numpy>=1.21.0
-torch>=1.10.0
+numpy==1.26.4
+torch==2.2.2
