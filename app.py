@@ -3,6 +3,7 @@ from flask_cors import CORS
 from pytube import YouTube
 import os
 import uuid
+import traceback
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -25,7 +26,7 @@ def download_video():
         yt = YouTube(url)
         stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
         if not stream:
-            return jsonify({'error': 'No suitable video stream found.'}), 404
+            return jsonify({'error': f'No suitable video stream found for {yt.title}.'}), 404
         filename = f"{uuid.uuid4()}.mp4"
         filepath = os.path.join('/tmp', filename)
         stream.download(output_path='/tmp', filename=filename)
@@ -33,7 +34,9 @@ def download_video():
         os.remove(filepath)
         return response
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print('Erro ao baixar vídeo:', str(e))
+        print(traceback.format_exc())
+        return jsonify({'error': f'Error: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
