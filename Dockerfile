@@ -1,31 +1,27 @@
-﻿FROM python:3.13-slim
+FROM python:3.10.13-slim
 
-# Instala dependências de sistema necessárias para ffmpeg/av
+# Instala dependências do sistema
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        ffmpeg \
-        libsm6 \
-        libxext6 \
         libavformat-dev \
         libavcodec-dev \
         libavdevice-dev \
         libavutil-dev \
         libavfilter-dev \
         libswscale-dev \
-        libswresample-dev \
-        pkg-config \
-    && rm -rf /var/lib/apt/lists/*
+        libswresample-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-# Instala dependências Python
-COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
-
-# Copia o restante do código
-COPY . /app
+# Copia os arquivos da sua app
 WORKDIR /app
+COPY . .
 
-# Expõe a porta
-EXPOSE 10000
+# Instala as dependências Python
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
 
-# Comando para iniciar o app
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
+# Porta que o Render vai expor
+EXPOSE 8000
+
+# Comando para rodar a app (ajuste se for diferente)
+CMD ["gunicorn", "-b", "0.0.0.0:8000", "app:app"]
