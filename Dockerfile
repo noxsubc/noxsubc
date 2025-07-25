@@ -1,9 +1,10 @@
-# Usa Python 3.10.13
-FROM python:3.10.13-slim
+FROM python:3.13-slim
 
-# Instala dependências do sistema
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        ffmpeg \
+        libsm6 \
+        libxext6 \
         libavformat-dev \
         libavcodec-dev \
         libavdevice-dev \
@@ -11,21 +12,16 @@ RUN apt-get update && \
         libavfilter-dev \
         libswscale-dev \
         libswresample-dev \
-        gcc && \
+        pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
-# Define diretório de trabalho
 WORKDIR /app
 
-# Copia tudo
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+
 COPY . .
 
-# Instala dependências do Python
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+EXPOSE 10000
 
-# Expõe a porta que seu app vai rodar
-EXPOSE 8000
-
-# Comando para iniciar (ajuste se necessário)
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "app:app"]
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000", "--workers", "4", "--log-level", "info"]
