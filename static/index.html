@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Baixar Vídeo do YouTube</title>
+    <title>Transcrição de Vídeo</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -20,24 +20,47 @@
             background: #fff;
             border-radius: 16px;
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            padding: 40px 32px 32px 32px;
-            max-width: 400px;
+            padding: 32px 24px 24px 24px;
+            max-width: 540px;
             width: 100%;
             text-align: center;
         }
         h1 {
             color: #e52d27;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
             font-size: 2rem;
             font-weight: 700;
         }
+        .tabs {
+            display: flex;
+            margin-bottom: 24px;
+            border-bottom: 2px solid #eee;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px 0;
+            cursor: pointer;
+            font-weight: 700;
+            color: #888;
+            background: none;
+            border: none;
+            outline: none;
+            transition: color 0.2s, border-bottom 0.2s;
+        }
+        .tab.active {
+            color: #e52d27;
+            border-bottom: 3px solid #e52d27;
+            background: #f8f8f8;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         .input-group {
             display: flex;
             flex-direction: column;
-            gap: 16px;
-            margin-bottom: 24px;
+            gap: 14px;
+            margin-bottom: 18px;
         }
-        input[type='text'] {
+        input[type='text'], textarea {
             padding: 12px;
             border-radius: 8px;
             border: 1px solid #ccc;
@@ -45,19 +68,37 @@
             outline: none;
             transition: border 0.2s;
         }
-        input[type='text']:focus {
+        input[type='text']:focus, textarea:focus {
             border: 1.5px solid #e52d27;
         }
-        select {
-            padding: 10px;
+        textarea {
+            min-height: 220px;
+            resize: vertical;
+            font-family: 'Roboto', monospace;
+        }
+        .file-upload {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+        }
+        .file-upload label {
+            background: #e52d27;
+            color: #fff;
+            padding: 8px 16px;
             border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 1rem;
-            outline: none;
-            margin-bottom: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: background 0.2s;
+        }
+        .file-upload label:hover {
+            background: #b31217;
+        }
+        .file-upload input[type='file'] {
+            display: none;
         }
         button {
-            padding: 12px;
+            padding: 12px 24px;
             border-radius: 8px;
             border: none;
             background: linear-gradient(90deg, #e52d27, #b31217);
@@ -67,12 +108,30 @@
             cursor: pointer;
             transition: background 0.2s, transform 0.1s;
         }
-        button:hover {
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        button:hover:not(:disabled) {
             background: linear-gradient(90deg, #b31217, #e52d27);
             transform: translateY(-2px) scale(1.03);
         }
+        .progress {
+            width: 100%;
+            background: #eee;
+            border-radius: 8px;
+            margin: 10px 0 18px 0;
+            height: 16px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #e52d27, #b31217);
+            width: 0%;
+            transition: width 0.4s;
+        }
         .message {
-            margin-top: 12px;
+            margin-top: 10px;
             font-size: 1.1em;
             color: #333;
             min-height: 24px;
@@ -83,127 +142,246 @@
             font-size: 0.95em;
             opacity: 0.7;
         }
-        @media (max-width: 500px) {
-            .container {
-                padding: 24px 8px 16px 8px;
-            }
-            h1 {
-                font-size: 1.3rem;
-            }
+        .video-preview {
+            margin: 10px 0 18px 0;
+            width: 100%;
+            max-width: 420px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px #0002;
+            display: none;
+        }
+        @media (max-width: 600px) {
+            .container { padding: 16px 2vw 12px 2vw; }
+            h1 { font-size: 1.2rem; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Baixar Vídeo do YouTube</h1>
-        <div class="input-group">
-            <input type="text" id="yturl" placeholder="Cole a URL do vídeo do YouTube aqui">
-            <select id="qualitySelect" style="display:none;"></select>
-            <button onclick="downloadVideo()">Baixar</button>
+        <h1>Transcrição de Vídeo</h1>
+        <div class="tabs">
+            <button class="tab active" id="tab-transcribe" onclick="showTab('transcribe')">Transcrever</button>
+            <button class="tab" id="tab-edit" onclick="showTab('edit')" disabled>Editar Legenda</button>
         </div>
-        <div class="message" id="message"></div>
+        <div class="tab-content active" id="content-transcribe">
+            <form id="transcribeForm" onsubmit="event.preventDefault(); startTranscription();">
+                <div class="input-group">
+                    <input type="text" id="videoUrl" placeholder="Cole o link do vídeo (YouTube ou arquivo .mp4)">
+                    <div class="file-upload">
+                        <label for="videoFile">Ou selecione um arquivo</label>
+                        <input type="file" id="videoFile" accept="video/mp4,video/x-m4v,video/*">
+                        <span id="fileName"></span>
+                    </div>
+                </div>
+                <video id="videoPreview" class="video-preview" controls></video>
+                <button type="submit" id="transcribeBtn">Transcrever</button>
+            </form>
+            <div class="progress" id="progressContainer" style="display:none;">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="message" id="transcribeMessage"></div>
+        </div>
+        <div class="tab-content" id="content-edit">
+            <div class="input-group">
+                <textarea id="subtitleText" spellcheck="false"></textarea>
+            </div>
+            <button onclick="saveSubtitle()">Salvar Edição</button>
+            <button onclick="downloadSubtitle()" style="margin-left:10px;">Baixar SRT</button>
+            <button onclick="downloadSubtitleTxt()" style="margin-left:10px;">Baixar TXT</button>
+            <div class="message" id="editMessage"></div>
+        </div>
     </div>
     <div class="footer">Desenvolvido por <b>noxsubc</b> &copy; 2024</div>
     <script>
-        function setCookie(name, value, days) {
-            const d = new Date();
-            d.setTime(d.getTime() + (days*24*60*60*1000));
-            let expires = "expires="+ d.toUTCString();
-            document.cookie = name + "=" + value + ";" + expires + ";path=/";
-        }
-        function getCookie(name) {
-            let cname = name + "=";
-            let decodedCookie = decodeURIComponent(document.cookie);
-            let ca = decodedCookie.split(';');
-            for(let i = 0; i < ca.length; i++) {
-                let c = ca[i];
-                while (c.charAt(0) == ' ') c = c.substring(1);
-                if (c.indexOf(cname) == 0) return c.substring(cname.length, c.length);
-            }
-            return "";
+        let transcriptId = null;
+        let srtContent = '';
+        let polling = false;
+        let pollInterval = null;
+
+        function showTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            document.getElementById('content-' + tab).classList.add('active');
         }
 
-        document.getElementById('yturl').addEventListener('blur', fetchQualities);
-        document.getElementById('yturl').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') fetchQualities();
+        document.getElementById('videoFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            document.getElementById('fileName').textContent = file ? file.name : '';
+            if (file) {
+                document.getElementById('videoUrl').value = '';
+                showVideoPreview(file);
+            } else {
+                hideVideoPreview();
+            }
+        });
+        document.getElementById('videoUrl').addEventListener('input', function(e) {
+            if (e.target.value) {
+                document.getElementById('videoFile').value = '';
+                document.getElementById('fileName').textContent = '';
+                showVideoPreview(e.target.value);
+            } else {
+                hideVideoPreview();
+            }
         });
 
-        function fetchQualities() {
-            const url = document.getElementById('yturl').value;
-            const select = document.getElementById('qualitySelect');
-            const messageDiv = document.getElementById('message');
-            select.style.display = 'none';
-            select.innerHTML = '';
-            if (!url) return;
-            messageDiv.textContent = 'Buscando qualidades...';
-            fetch('/api/qualities', {
+        function showVideoPreview(fileOrUrl) {
+            const video = document.getElementById('videoPreview');
+            if (typeof fileOrUrl === 'string') {
+                if (fileOrUrl.match(/^https?:\/\//)) {
+                    video.src = fileOrUrl;
+                    video.style.display = 'block';
+                } else {
+                    hideVideoPreview();
+                }
+            } else if (fileOrUrl instanceof File) {
+                video.src = URL.createObjectURL(fileOrUrl);
+                video.style.display = 'block';
+            }
+        }
+        function hideVideoPreview() {
+            const video = document.getElementById('videoPreview');
+            video.src = '';
+            video.style.display = 'none';
+        }
+
+        function startTranscription() {
+            const url = document.getElementById('videoUrl').value.trim();
+            const fileInput = document.getElementById('videoFile');
+            const file = fileInput.files[0];
+            const messageDiv = document.getElementById('transcribeMessage');
+            const progressBar = document.getElementById('progressBar');
+            const progressContainer = document.getElementById('progressContainer');
+            messageDiv.textContent = '';
+            progressBar.style.width = '0%';
+            progressContainer.style.display = 'block';
+            document.getElementById('transcribeBtn').disabled = true;
+            transcriptId = null;
+            srtContent = '';
+            document.getElementById('tab-edit').disabled = true;
+            document.getElementById('subtitleText').value = '';
+            document.getElementById('editMessage').textContent = '';
+
+            let formData = new FormData();
+            if (file) {
+                formData.append('file', file);
+            } else if (url) {
+                formData = JSON.stringify({ url });
+            } else {
+                messageDiv.textContent = 'Informe um link ou selecione um arquivo.';
+                progressContainer.style.display = 'none';
+                document.getElementById('transcribeBtn').disabled = false;
+                return;
+            }
+
+            fetch('/api/transcribe', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url })
+                body: file ? formData : formData,
+                headers: file ? undefined : { 'Content-Type': 'application/json' },
             })
             .then(response => response.json())
             .then(data => {
-                if (data.qualities && data.qualities.length > 0) {
-                    select.style.display = '';
-                    data.qualities.forEach(q => {
-                        const opt = document.createElement('option');
-                        opt.value = q.itag;
-                        opt.textContent = q.resolution + ' (' + q.mime_type + ')';
-                        select.appendChild(opt);
-                    });
-                    // Seleciona a última qualidade usada (cookie)
-                    const lastItag = getCookie('lastItag');
-                    if (lastItag) select.value = lastItag;
-                    messageDiv.textContent = '';
-                } else {
-                    messageDiv.textContent = 'Nenhuma qualidade disponível.';
-                }
+                if (data.error) throw new Error(data.error);
+                transcriptId = data.transcript_id;
+                document.getElementById('tab-edit').disabled = true;
+                pollTranscriptionStatus();
             })
-            .catch(() => {
-                messageDiv.textContent = 'Erro ao buscar qualidades.';
+            .catch(err => {
+                messageDiv.textContent = err.message || 'Erro ao transcrever.';
+                progressContainer.style.display = 'none';
+                document.getElementById('transcribeBtn').disabled = false;
             });
         }
 
-        function downloadVideo() {
-            const url = document.getElementById('yturl').value;
-            const select = document.getElementById('qualitySelect');
-            const messageDiv = document.getElementById('message');
-            const itag = select && select.style.display !== 'none' ? select.value : undefined;
-            messageDiv.textContent = '';
-            if (!url) {
-                messageDiv.textContent = 'Por favor, insira a URL do vídeo.';
-                return;
-            }
-            messageDiv.textContent = 'Processando...';
-            // Salva a última qualidade escolhida
-            if (itag) setCookie('lastItag', itag, 30);
-            fetch('/api/download', {
+        function pollTranscriptionStatus() {
+            const progressBar = document.getElementById('progressBar');
+            const progressContainer = document.getElementById('progressContainer');
+            const messageDiv = document.getElementById('transcribeMessage');
+            pollInterval = setInterval(() => {
+                fetch(`/api/transcribe/status/${transcriptId}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'processing') {
+                        progressBar.style.width = (data.progress || 10) + '%';
+                        messageDiv.textContent = 'Transcrevendo... Aguarde.';
+                    } else if (data.status === 'done') {
+                        clearInterval(pollInterval);
+                        fetch(`/api/subtitle/${transcriptId}`)
+                        .then(r => r.json())
+                        .then(sub => {
+                            srtContent = sub.srt;
+                            document.getElementById('subtitleText').value = srtContent;
+                            document.getElementById('tab-edit').disabled = false;
+                            showTab('edit');
+                            messageDiv.textContent = 'Transcrição concluída!';
+                            progressBar.style.width = '100%';
+                            setTimeout(() => progressContainer.style.display = 'none', 1000);
+                        });
+                    } else if (data.status === 'error') {
+                        clearInterval(pollInterval);
+                        messageDiv.textContent = data.error || 'Erro ao transcrever.';
+                        progressContainer.style.display = 'none';
+                        document.getElementById('transcribeBtn').disabled = false;
+                    }
+                })
+                .catch(() => {
+                    clearInterval(pollInterval);
+                    messageDiv.textContent = 'Erro ao consultar status.';
+                    progressContainer.style.display = 'none';
+                    document.getElementById('transcribeBtn').disabled = false;
+                });
+            }, 2000);
+        }
+
+        function saveSubtitle() {
+            if (!transcriptId) return;
+            const srt = document.getElementById('subtitleText').value;
+            fetch(`/api/subtitle/${transcriptId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(itag ? { url, itag } : { url })
+                body: JSON.stringify({ srt })
             })
-            .then(response => {
-                if (!response.ok) return response.json().then(err => { throw err; });
-                return response.blob().then(blob => ({ blob, response }));
-            })
-            .then(({ blob, response }) => {
-                const disposition = response.headers.get('Content-Disposition');
-                let filename = 'video.mp4';
-                if (disposition && disposition.indexOf('filename=') !== -1) {
-                    filename = disposition.split('filename=')[1].replace(/"/g, '');
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('editMessage').textContent = 'Legenda salva!';
+                } else {
+                    document.getElementById('editMessage').textContent = 'Erro ao salvar.';
                 }
-                const urlBlob = window.URL.createObjectURL(blob);
+            })
+            .catch(() => {
+                document.getElementById('editMessage').textContent = 'Erro ao salvar.';
+            });
+        }
+
+        function downloadSubtitle() {
+            if (!transcriptId) return;
+            fetch(`/api/subtitle/${transcriptId}/download`)
+            .then(response => response.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = urlBlob;
-                a.download = filename;
+                a.href = url;
+                a.download = 'legenda.srt';
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
-                window.URL.revokeObjectURL(urlBlob);
-                messageDiv.textContent = 'Download iniciado!';
-            })
-            .catch(err => {
-                messageDiv.textContent = err.error || 'Erro ao baixar o vídeo.';
+                window.URL.revokeObjectURL(url);
+            });
+        }
+        function downloadSubtitleTxt() {
+            if (!transcriptId) return;
+            fetch(`/api/subtitle/${transcriptId}/download-txt`)
+            .then(response => response.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'legenda.txt';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
             });
         }
     </script>
