@@ -1,0 +1,7 @@
+﻿.vs/
+*.user
+*.suo
+*.vsidx
+*.vssscc
+*.v12.suo
+*.cache

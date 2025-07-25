@@ -1,0 +1,29 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple App</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .message { margin-top: 20px; font-size: 1.2em; color: #333; }
+    </style>
+</head>
+<body>
+    <h1>Frontend Render.com Example</h1>
+    <button onclick="fetchMessage()">Get Backend Message</button>
+    <div class="message" id="message"></div>
+    <script>
+        function fetchMessage() {
+            fetch('/api/message')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('message').textContent = data.message;
+                })
+                .catch(() => {
+                    document.getElementById('message').textContent = 'Error fetching message.';
+                });
+        }
+    </script>
+</body>
+</html>
