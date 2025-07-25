@@ -5,11 +5,16 @@ import os
 import uuid
 import traceback
 
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, static_folder='static', static_url_path='')
 CORS(app)
 
 @app.route('/')
 def serve_frontend():
+    return send_from_directory(app.static_folder, 'index.html')
+
+# Fallback para qualquer rota desconhecida (SPA ou refresh)
+@app.errorhandler(404)
+def not_found(e):
     return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/api/message')
