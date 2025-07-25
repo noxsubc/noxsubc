@@ -1,9 +1,9 @@
-﻿# Render deploy configuration for Flask app using Gunicorn
+﻿# Render deploy configuration for Flask app usando Gunicorn e build customizado
 services:
   - type: web
     name: noxsubc
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: ./render-build.sh
     startCommand: gunicorn app:app --bind 0.0.0.0:10000
     envVars:
       - key: PORT
