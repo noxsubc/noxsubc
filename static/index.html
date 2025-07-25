@@ -3,26 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple App</title>
+    <title>Baixar Vídeo do YouTube</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; }
         .message { margin-top: 20px; font-size: 1.2em; color: #333; }
+        .input-group { margin-top: 30px; }
+        input[type='text'] { width: 350px; padding: 8px; }
+        button { padding: 8px 16px; }
     </style>
 </head>
 <body>
-    <h1>Frontend Render.com Example</h1>
-    <button onclick="fetchMessage()">Get Backend Message</button>
+    <h1>Baixar Vídeo do YouTube</h1>
+    <div class="input-group">
+        <input type="text" id="yturl" placeholder="Cole a URL do vídeo do YouTube aqui">
+        <button onclick="downloadVideo()">Baixar</button>
+    </div>
     <div class="message" id="message"></div>
     <script>
-        function fetchMessage() {
-            fetch('/api/message')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('message').textContent = data.message;
-                })
-                .catch(() => {
-                    document.getElementById('message').textContent = 'Error fetching message.';
-                });
+        function downloadVideo() {
+            const url = document.getElementById('yturl').value;
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = '';
+            if (!url) {
+                messageDiv.textContent = 'Por favor, insira a URL do vídeo.';
+                return;
+            }
+            messageDiv.textContent = 'Processando...';
+            fetch('/api/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            })
+            .then(response => {
+                if (!response.ok) return response.json().then(err => { throw err; });
+                return response.blob().then(blob => ({ blob, response }));
+            })
+            .then(({ blob, response }) => {
+                const disposition = response.headers.get('Content-Disposition');
+                let filename = 'video.mp4';
+                if (disposition && disposition.indexOf('filename=') !== -1) {
+                    filename = disposition.split('filename=')[1].replace(/"/g, '');
+                }
+                const urlBlob = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = urlBlob;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(urlBlob);
+                messageDiv.textContent = 'Download iniciado!';
+            })
+            .catch(err => {
+                messageDiv.textContent = err.error || 'Erro ao baixar o vídeo.';
+            });
         }
     </script>
 </body>
