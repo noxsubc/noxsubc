@@ -3,7 +3,7 @@ services:
   - type: web
     name: noxsubc
     env: python
-    buildCommand: ./render-build.sh
+    buildCommand: bash render-build.sh
     startCommand: gunicorn app:app --bind 0.0.0.0:10000
     envVars:
       - key: PORT
